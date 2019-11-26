@@ -5,7 +5,8 @@ CONFIG -= qt
 
 SOURCES += \
         main.c \
-        ocsp_proc.c
+        ocsp_proc.c \
+        ocsp_srv.c
 
 HEADERS += \
     ocsp_srv.h
@@ -15,7 +16,7 @@ INCLUDEPATH += "../../PKILib"
 
 mac {
     LIBS += -L"../../build-PKILib-Desktop_Qt_5_11_3_clang_64bit-Debug" -lPKILib
-    LIBS += -L"../../PKILib/lib/mac/openssl/lib" -lcrypto -lssl
+    LIBS += -L"../../PKILib/lib/mac/cmpossl/lib" -lcrypto -lssl
 }
 
 win32 {
