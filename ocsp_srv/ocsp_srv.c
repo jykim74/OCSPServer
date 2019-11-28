@@ -99,6 +99,8 @@ int main()
 #else
 int main()
 {
+    initServer();
+
     JS_THD_logInit( "./log", "ocsp", 2 );
     JS_THD_registerService( "JS_OCSP", NULL, 9010, 4, NULL, OCSP_Service );
     JS_THD_registerService( "JS_OCSP_SSL", NULL, 9110, 4, NULL, OCSP_SSL_Service );
