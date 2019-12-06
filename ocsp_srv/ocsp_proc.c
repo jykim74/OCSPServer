@@ -67,8 +67,15 @@ int procVerify( sqlite3 *db, const BIN *pReq, int nType, const char *pPath, BIN 
     JCertIDInfo    sIDInfo;
     JCertStatusInfo sStatusInfo;
 
+    char *pSignerName = NULL;
+    char *pDNHash = NULL;
+    JDB_Signer  sDBSigner;
+    BIN binSigner = {0,0};
+
     memset( &sIDInfo, 0x00, sizeof(sIDInfo));
-    memset( &sStatusInfo, 0x00, sizeof(sStatusInfo));
+    memset( &sStatusInfo, 0x00, sizeof(sStatusInfo));   
+    memset( &sDBSigner, 0x00, sizeof(sDBSigner));
+
 
 //    ret = JS_OCSP_decodeRequest( pReq, &g_binOcspCert, &sIDInfo );
 
@@ -85,13 +92,6 @@ int procVerify( sqlite3 *db, const BIN *pReq, int nType, const char *pPath, BIN 
     }
     else if( strcasecmp( pPath, "OCSP") == 0 )
     {
-        char *pSignerName = NULL;
-        char *pDNHash = NULL;
-        JDB_Signer  sDBSigner;
-        BIN binSigner = {0,0};
-
-        memset( &sDBSigner, 0x00, sizeof(sDBSigner));
-
         ret = JS_OCSP_getReqSignerName( pReq, &pSignerName, &pDNHash );
         if( ret == 0 )
         {
@@ -100,25 +100,34 @@ int procVerify( sqlite3 *db, const BIN *pReq, int nType, const char *pPath, BIN 
         }
 
         ret = JS_OCSP_decodeRequest( pReq, &binSigner, &sIDInfo );
+        if( ret != 0 )
+        {
+            fprintf( stderr, "fail to decode request(%d)\n", ret );
+            goto end;
+        }
 
         ret = getCertStatus( db, &sIDInfo, &sStatusInfo );
+        if( ret != 0 )
+        {
+            fprintf( stderr, "fail to get cert status(%d)\n", ret );
+            goto end;
+        }
 
-        if( pSignerName ) JS_free( pSignerName );
-        if( pDNHash ) JS_free( pDNHash );
-        JS_BIN_reset( &binSigner );
-        JS_DB_resetSigner( &sDBSigner );
-    }
-
-    ret = JS_OCSP_encodeResponse( pReq, &g_binOcspCert, &g_binOcspPri, "SHA1", &sIDInfo, &sStatusInfo, pRsp );
-    if( ret != 0 )
-    {
-        fprintf( stderr, "fail to encode OCSP response message(%d)\n", ret );
-        goto end;
+        ret = JS_OCSP_encodeResponse( pReq, &g_binOcspCert, &g_binOcspPri, "SHA1", &sIDInfo, &sStatusInfo, pRsp );
+        if( ret != 0 )
+        {
+           fprintf( stderr, "fail to encode OCSP response message(%d)\n", ret );
+           goto end;
+        }
     }
 
 end :
     JS_OCSP_resetCertIDInfo( &sIDInfo );
     JS_OCSP_resetCertStatusInfo( &sStatusInfo );
+    if( pSignerName ) JS_free( pSignerName );
+    if( pDNHash ) JS_free( pDNHash );
+    JS_BIN_reset( &binSigner );
+    JS_DB_resetSigner( &sDBSigner );
 
     return ret;
 }
