@@ -2,24 +2,36 @@
 
 #include "js_process.h"
 #include "js_http.h"
-
+#include "js_db.h"
 #include "ocsp_srv.h"
 
 BIN     g_binOcspCert = {0,0};
 BIN     g_binOcspPri = {0,0};
 
+const char* g_dbPath = "/Users/jykim/work/CAMan/ca.db";
+
 int OCSP_Service( JThreadInfo *pThInfo )
 {
     int ret = 0;
-    JSNameValList   *pHeaderList = NULL;
-    JSNameValList   *pRspHeaderList = NULL;
+    JNameValList   *pHeaderList = NULL;
+    JNameValList   *pRspHeaderList = NULL;
     char            *pBody = NULL;
     char            *pMethInfo = NULL;
     BIN             binReq = {0,0};
     BIN             binRsp = {0,0};
     const char      *pMethod = "POST";
+    int             nType = -1;
+    char            *pPath = NULL;
 
     printf( "Service start\n" );
+
+    sqlite3* db = JS_DB_open( g_dbPath );
+    if( db == NULL )
+    {
+        fprintf( stderr, "fail to open db file(%s)\n", g_dbPath );
+        ret = -1;
+        goto end;
+    }
 
     ret = JS_HTTP_recvBin( pThInfo->nSockFd, &pMethInfo, &pHeaderList, &binReq );
     if( ret != 0 )
@@ -29,8 +41,9 @@ int OCSP_Service( JThreadInfo *pThInfo )
     }
 
     if( pMethInfo ) printf( "MethInfo : %s\n", pMethInfo );
+    JS_HTTP_getMethodPath( pMethInfo, &nType, &pPath );
 
-    ret = procVerify( &binReq, &binRsp );
+    ret = procVerify( db, &binReq, nType, pPath, &binRsp );
     if( ret != 0 )
     {
         fprintf( stderr, "procVerify fail(%d)\n", ret );
@@ -55,6 +68,8 @@ end :
     JS_BIN_reset( &binReq );
     JS_BIN_reset( &binRsp );
     if( pMethInfo ) JS_free( pMethInfo );
+    if( pPath ) JS_free( pPath );
+    if(db) JS_DB_close( db );
 
     return ret;
 }
