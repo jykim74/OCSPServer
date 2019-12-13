@@ -43,15 +43,22 @@ int OCSP_Service( JThreadInfo *pThInfo )
     if( pMethInfo ) printf( "MethInfo : %s\n", pMethInfo );
     JS_HTTP_getMethodPath( pMethInfo, &nType, &pPath );
 
-    ret = procVerify( db, &binReq, nType, pPath, &binRsp );
-    if( ret != 0 )
+    if( strcasecmp( pPath, "PING") == 0 )
     {
-        fprintf( stderr, "procVerify fail(%d)\n", ret );
-        goto end;
+
+    }
+    else if( strcasecmp( pPath, "OCSP") == 0 )
+    {
+        ret = procVerify( db, &binReq, &binRsp );
+        if( ret != 0 )
+        {
+            fprintf( stderr, "procVerify fail(%d)\n", ret );
+            goto end;
+        }
     }
 
-    JS_UTIL_createNameValList2("accept", "application/json", &pRspHeaderList);
-    JS_UTIL_appendNameValList2( pRspHeaderList, "content-type", "application/json");
+    JS_UTIL_createNameValList2("accept", "application/ocsp-response", &pRspHeaderList);
+    JS_UTIL_appendNameValList2( pRspHeaderList, "content-type", "application/ocsp-response");
 
     ret = JS_HTTP_sendBin( pThInfo->nSockFd, pMethod, pRspHeaderList, &binRsp );
     if( ret != 0 )

@@ -61,7 +61,7 @@ end :
     return 0;
 }
 
-int procVerify( sqlite3 *db, const BIN *pReq, int nType, const char *pPath, BIN *pRsp )
+int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
 {
     int     ret = 0;
     JCertIDInfo    sIDInfo;
@@ -85,40 +85,32 @@ int procVerify( sqlite3 *db, const BIN *pReq, int nType, const char *pPath, BIN 
         goto end;
     }
 
-    if( strcasecmp( pPath, "PING") == 0 )
+    ret = JS_OCSP_getReqSignerName( pReq, &pSignerName, &pDNHash );
+    if( ret == 0 )
     {
-        ret = 0;
+        JS_DB_getSignerByDNHash( db, pDNHash, &sDBSigner );
+        JS_BIN_decodeHex( sDBSigner.pCert, &binSigner );
+    }
+
+    ret = JS_OCSP_decodeRequest( pReq, &binSigner, &sIDInfo );
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to decode request(%d)\n", ret );
         goto end;
     }
-    else if( strcasecmp( pPath, "OCSP") == 0 )
+
+    ret = getCertStatus( db, &sIDInfo, &sStatusInfo );
+    if( ret != 0 )
     {
-        ret = JS_OCSP_getReqSignerName( pReq, &pSignerName, &pDNHash );
-        if( ret == 0 )
-        {
-            JS_DB_getSignerByDNHash( db, pDNHash, &sDBSigner );
-            JS_BIN_decodeHex( sDBSigner.pCert, &binSigner );
-        }
+        fprintf( stderr, "fail to get cert status(%d)\n", ret );
+        goto end;
+    }
 
-        ret = JS_OCSP_decodeRequest( pReq, &binSigner, &sIDInfo );
-        if( ret != 0 )
-        {
-            fprintf( stderr, "fail to decode request(%d)\n", ret );
-            goto end;
-        }
-
-        ret = getCertStatus( db, &sIDInfo, &sStatusInfo );
-        if( ret != 0 )
-        {
-            fprintf( stderr, "fail to get cert status(%d)\n", ret );
-            goto end;
-        }
-
-        ret = JS_OCSP_encodeResponse( pReq, &g_binOcspCert, &g_binOcspPri, "SHA1", &sIDInfo, &sStatusInfo, pRsp );
-        if( ret != 0 )
-        {
-           fprintf( stderr, "fail to encode OCSP response message(%d)\n", ret );
-           goto end;
-        }
+    ret = JS_OCSP_encodeResponse( pReq, &g_binOcspCert, &g_binOcspPri, "SHA1", &sIDInfo, &sStatusInfo, pRsp );
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to encode OCSP response message(%d)\n", ret );
+        goto end;
     }
 
 end :
