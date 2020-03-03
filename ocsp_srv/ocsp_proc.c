@@ -34,7 +34,7 @@ int getCertStatus( sqlite3 *db, JCertIDInfo *pIDInfo, JCertStatusInfo *pStatusIn
         goto end;
     }
 
-    ret = JS_DB_getCertBySerial( db, sIssuer.nNum, pIDInfo->pSerial, &sCert );
+    ret = JS_DB_getCertBySerial( db, pIDInfo->pSerial, &sCert );
     if( ret != 0 )
     {
         nStatus = JS_OCSP_STATUS_UNKNOWN;

@@ -15,6 +15,8 @@ int OCSP_Service( JThreadInfo *pThInfo )
     int ret = 0;
     JNameValList   *pHeaderList = NULL;
     JNameValList   *pRspHeaderList = NULL;
+    JNameValList    *pParamList = NULL;
+
     char            *pBody = NULL;
     char            *pMethInfo = NULL;
     BIN             binReq = {0,0};
@@ -41,7 +43,7 @@ int OCSP_Service( JThreadInfo *pThInfo )
     }
 
     if( pMethInfo ) printf( "MethInfo : %s\n", pMethInfo );
-    JS_HTTP_getMethodPath( pMethInfo, &nType, &pPath );
+    JS_HTTP_getMethodPath( pMethInfo, &nType, &pPath, &pParamList );
 
     if( strcasecmp( pPath, "PING") == 0 )
     {
@@ -71,6 +73,7 @@ end :
     if( pBody ) JS_free( pBody );
     if( pHeaderList ) JS_UTIL_resetNameValList( &pHeaderList );
     if( pRspHeaderList ) JS_UTIL_resetNameValList( &pRspHeaderList );
+    if( pParamList ) JS_UTIL_resetNameValList( &pParamList );
 
     JS_BIN_reset( &binReq );
     JS_BIN_reset( &binRsp );
