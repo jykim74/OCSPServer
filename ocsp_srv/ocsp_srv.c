@@ -8,7 +8,7 @@
 BIN     g_binOcspCert = {0,0};
 BIN     g_binOcspPri = {0,0};
 
-const char* g_dbPath = "/Users/jykim/work/CAMan/ca.db";
+const char* g_dbPath = "D:/data/ca.db";
 
 int OCSP_Service( JThreadInfo *pThInfo )
 {
@@ -93,8 +93,8 @@ int OCSP_SSL_Service( JThreadInfo *pThInfo )
 
 int initServer()
 {
-    const char *pOCSPCertPath = "/Users/jykim/work/PKITester/data/tsp_server_cert.der";
-    const char *pOCSPPriPath = "/Users/jykim/work/PKITester/data/tsp_server_prikey.der";
+    const char *pOCSPCertPath = "D:/certs/ocsp_cert.der";
+    const char *pOCSPPriPath = "D:/certs/ocsp_key.der";
 
     JS_BIN_fileRead( pOCSPCertPath, &g_binOcspCert );
     JS_BIN_fileRead( pOCSPPriPath, &g_binOcspPri );
