@@ -49,14 +49,17 @@ int OCSP_Service( JThreadInfo *pThInfo )
     {
 
     }
-    else if( strcasecmp( pPath, "OCSP") == 0 )
+    else if( strcasecmp( pPath, "/OCSP") == 0 )
     {
+        JS_BIN_fileWrite( &binReq, "D:/work/ber/ocsp_req.der" );
         ret = procVerify( db, &binReq, &binRsp );
         if( ret != 0 )
         {
             fprintf( stderr, "procVerify fail(%d)\n", ret );
             goto end;
         }
+
+        JS_BIN_fileWrite( &binRsp, "D:/work/ber/ocsp_rsp.der" );
     }
 
     JS_UTIL_createNameValList2("accept", "application/ocsp-response", &pRspHeaderList);

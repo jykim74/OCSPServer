@@ -28,28 +28,32 @@ int getCertStatus( sqlite3 *db, JCertIDInfo *pIDInfo, JCertStatusInfo *pStatusIn
     memset( &sRevoked, 0x00, sizeof(sRevoked));
 
     ret = JS_DB_getCertByKeyHash( db, pIDInfo->pKeyHash, &sIssuer );
-    if( ret != 0 )
+    if( ret != 1 )
     {
+        fprintf( stderr, "fail to get Issuer by KeyHash(%s)\n", pIDInfo->pKeyHash );
         nStatus = JS_OCSP_STATUS_UNKNOWN;
         goto end;
     }
 
     ret = JS_DB_getCertBySerial( db, pIDInfo->pSerial, &sCert );
-    if( ret != 0 )
+    if( ret != 1 )
     {
+        fprintf( stderr, "fail to get cert by serial(%s)\n", pIDInfo->pSerial );
         nStatus = JS_OCSP_STATUS_UNKNOWN;
         goto end;
     }
 
     ret = JS_DB_getRevokedByCertNum( db, sCert.nNum, &sRevoked );
 
-    if( ret == 0 )
+    if( ret == 1 )
     {
+        fprintf( stderr, "Cert is revoked(Num:%d)\n", sCert.nNum );
         nStatus = JS_OCSP_STATUS_REVOKED;
         nReason = sRevoked.nReason;
         nRevokedTime = sRevoked.nRevokedDate;
     }
 
+    printf( "Cert is Good(Num:%d)\n", sCert.nNum );
 end :
     JS_OCSP_setCertStatusInfo( pStatusInfo, nStatus, nReason, nRevokedTime, NULL );
 
@@ -76,18 +80,10 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
     memset( &sStatusInfo, 0x00, sizeof(sStatusInfo));   
     memset( &sDBSigner, 0x00, sizeof(sDBSigner));
 
-
-//    ret = JS_OCSP_decodeRequest( pReq, &g_binOcspCert, &sIDInfo );
-
-    if( ret != 0 )
-    {
-        fprintf( stderr, "fail to decode OCSP request message(%d)\n", ret );
-        goto end;
-    }
-
     ret = JS_OCSP_getReqSignerName( pReq, &pSignerName, &pDNHash );
     if( ret == 0 )
     {
+        printf( "Request is Signed( SignerName : %s)\n", pSignerName );
         JS_DB_getSignerByDNHash( db, pDNHash, &sDBSigner );
         JS_BIN_decodeHex( sDBSigner.pCert, &binSigner );
     }
