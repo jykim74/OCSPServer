@@ -21,7 +21,7 @@ int OCSP_Service( JThreadInfo *pThInfo )
     char            *pMethInfo = NULL;
     BIN             binReq = {0,0};
     BIN             binRsp = {0,0};
-    const char      *pMethod = "POST";
+    const char      *pMethod = NULL;
     int             nType = -1;
     char            *pPath = NULL;
 
@@ -65,6 +65,7 @@ int OCSP_Service( JThreadInfo *pThInfo )
     JS_UTIL_createNameValList2("accept", "application/ocsp-response", &pRspHeaderList);
     JS_UTIL_appendNameValList2( pRspHeaderList, "content-type", "application/ocsp-response");
 
+    pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
     ret = JS_HTTP_sendBin( pThInfo->nSockFd, pMethod, pRspHeaderList, &binRsp );
     if( ret != 0 )
     {
