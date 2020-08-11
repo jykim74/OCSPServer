@@ -62,7 +62,7 @@ int OCSP_Service( JThreadInfo *pThInfo )
 
     if( strcasecmp( pPath, "PING") == 0 )
     {
-
+        pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
     }
     else if( strcasecmp( pPath, "/OCSP") == 0 )
     {
@@ -74,13 +74,14 @@ int OCSP_Service( JThreadInfo *pThInfo )
             goto end;
         }
 
+        pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
         JS_BIN_fileWrite( &binRsp, "D:/work/ber/ocsp_rsp.der" );
     }
 
     JS_UTIL_createNameValList2("accept", "application/ocsp-response", &pRspHeaderList);
     JS_UTIL_appendNameValList2( pRspHeaderList, "content-type", "application/ocsp-response");
 
-    pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
+
     ret = JS_HTTP_sendBin( pThInfo->nSockFd, pMethod, pRspHeaderList, &binRsp );
     if( ret != 0 )
     {
