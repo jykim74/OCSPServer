@@ -9,6 +9,7 @@
 
 BIN     g_binOcspCert = {0,0};
 BIN     g_binOcspPri = {0,0};
+int     g_nNeedSign = 0;
 
 const char* g_dbPath = NULL;
 static char g_sConfigPath[1024];
@@ -231,6 +232,13 @@ int initServer()
     {
         fprintf( stderr, "fail to read ocsp private key(%s)\n", value );
         exit(0);
+    }
+
+    value = JS_CFG_getValue( g_pEnvList, "OCSP_NEED_SIGN" );
+    if( value )
+    {
+        if( strcasecmp( value, "yes" ) == 0 )
+            g_nNeedSign = 1;
     }
 
     BIN binSSLCA = {0,0};

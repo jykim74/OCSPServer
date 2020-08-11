@@ -9,6 +9,7 @@
 
 extern BIN  g_binOcspCert;
 extern BIN  g_binOcspPri;
+extern int g_nNeedSign;
 
 int getCertStatus( sqlite3 *db, JCertIDInfo *pIDInfo, JCertStatusInfo *pStatusInfo )
 {
@@ -80,9 +81,15 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
     memset( &sStatusInfo, 0x00, sizeof(sStatusInfo));   
     memset( &sDBSigner, 0x00, sizeof(sDBSigner));
 
-    ret = JS_OCSP_getReqSignerName( pReq, &pSignerName, &pDNHash );
-    if( ret == 0 )
+    if( g_nNeedSign )
     {
+        ret = JS_OCSP_getReqSignerName( pReq, &pSignerName, &pDNHash );
+        if( ret != 0 )
+        {
+            fprintf( stderr, "Request need to sign(%d)\n", ret );
+            goto end;
+        }
+
         printf( "Request is Signed( SignerName : %s)\n", pSignerName );
         JS_DB_getSignerByDNHash( db, pDNHash, &sDBSigner );
         JS_BIN_decodeHex( sDBSigner.pCert, &binSigner );
