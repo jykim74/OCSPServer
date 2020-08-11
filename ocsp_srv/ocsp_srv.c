@@ -14,6 +14,7 @@ const char* g_dbPath = NULL;
 static char g_sConfigPath[1024];
 int g_nVerbose = 0;
 JEnvList    *g_pEnvList = NULL;
+SSL_CTX     *g_pSSLCTX = NULL;
 
 static char g_sBuildInfo[1024];
 
@@ -106,9 +107,90 @@ end :
 
 int OCSP_SSL_Service( JThreadInfo *pThInfo )
 {
-    printf( "Service SSL start\n" );
+    int ret = 0;
+    JNameValList   *pHeaderList = NULL;
+    JNameValList   *pRspHeaderList = NULL;
+    JNameValList    *pParamList = NULL;
 
-    return 0;
+    char            *pBody = NULL;
+    char            *pMethInfo = NULL;
+    BIN             binReq = {0,0};
+    BIN             binRsp = {0,0};
+    const char      *pMethod = NULL;
+    int             nType = -1;
+    char            *pPath = NULL;
+    SSL             *pSSL = NULL;
+
+    printf( "SSL Service start\n" );
+
+    sqlite3* db = JS_DB_open( g_dbPath );
+    if( db == NULL )
+    {
+        fprintf( stderr, "fail to open db file(%s)\n", g_dbPath );
+        ret = -1;
+        goto end;
+    }
+
+    ret = JS_SSL_accept( g_pSSLCTX, pThInfo->nSockFd, &pSSL );
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to accept SSL(%d)\n", ret );
+        goto end;
+    }
+
+    ret = JS_HTTPS_recvBin( pSSL, &pMethInfo, &pHeaderList, &binReq );
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to receive message(%d)\n", ret );
+        goto end;
+    }
+
+    if( pMethInfo ) printf( "MethInfo : %s\n", pMethInfo );
+    JS_HTTP_getMethodPath( pMethInfo, &nType, &pPath, &pParamList );
+
+    if( strcasecmp( pPath, "PING") == 0 )
+    {
+        pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
+    }
+    else if( strcasecmp( pPath, "/OCSP") == 0 )
+    {
+        JS_BIN_fileWrite( &binReq, "D:/work/ber/ocsp_req.der" );
+        ret = procVerify( db, &binReq, &binRsp );
+        if( ret != 0 )
+        {
+            fprintf( stderr, "procVerify fail(%d)\n", ret );
+            goto end;
+        }
+
+        pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
+        JS_BIN_fileWrite( &binRsp, "D:/work/ber/ocsp_rsp.der" );
+    }
+
+    JS_UTIL_createNameValList2("accept", "application/ocsp-response", &pRspHeaderList);
+    JS_UTIL_appendNameValList2( pRspHeaderList, "content-type", "application/ocsp-response");
+
+
+    ret = JS_HTTPS_sendBin( pSSL, pMethod, pRspHeaderList, &binRsp );
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to send message(%d)\n", ret );
+        goto end;
+    }
+
+end :
+    if( pBody ) JS_free( pBody );
+    if( pHeaderList ) JS_UTIL_resetNameValList( &pHeaderList );
+    if( pRspHeaderList ) JS_UTIL_resetNameValList( &pRspHeaderList );
+    if( pParamList ) JS_UTIL_resetNameValList( &pParamList );
+
+    JS_BIN_reset( &binReq );
+    JS_BIN_reset( &binRsp );
+    if( pMethInfo ) JS_free( pMethInfo );
+    if( pPath ) JS_free( pPath );
+    if( pSSL ) JS_SSL_clear( pSSL );
+    if(db) JS_DB_close( db );
+
+    return ret;
 }
 
 int initServer()
@@ -150,6 +232,54 @@ int initServer()
         fprintf( stderr, "fail to read ocsp private key(%s)\n", value );
         exit(0);
     }
+
+    BIN binSSLCA = {0,0};
+    BIN binSSLCert = {0,0};
+    BIN binSSLPri = {0,0};
+
+    ret = JS_BIN_fileRead( value, &binSSLCA );
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to read ssl ca cert(%s)\n", value );
+        exit(0);
+    }
+
+    value = JS_CFG_getValue( g_pEnvList, "SSL_CERT_PATH" );
+    if( value == NULL )
+    {
+        fprintf( stderr, "You have to set 'SSL_CERT_PATH'\n" );
+        exit(0);
+    }
+
+    ret = JS_BIN_fileRead( value, &binSSLCert );
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to read ssl cert(%s)\n", value );
+        exit(0);
+    }
+
+    value = JS_CFG_getValue( g_pEnvList, "SSL_PRIKEY_PATH" );
+    if( value == NULL )
+    {
+        fprintf( stderr, "You have to set 'SSL_PRIKEY_PATH'\n" );
+        exit(0);
+    }
+
+    ret = JS_BIN_fileRead( value, &binSSLPri );
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to read ssl private key(%s)\n", value );
+        exit(0);
+    }
+
+    JS_SSL_initServer( &g_pSSLCTX );
+    JS_SSL_setCertAndPriKey( g_pSSLCTX, &binSSLPri, &binSSLCert );
+    JS_SSL_setClientCACert( g_pSSLCTX, &binSSLCA );
+
+    JS_BIN_reset( &binSSLCA );
+    JS_BIN_reset( &binSSLCert );
+    JS_BIN_reset( &binSSLPri );
+
 
     value = JS_CFG_getValue( g_pEnvList, "DB_PATH" );
     if( value == NULL )
