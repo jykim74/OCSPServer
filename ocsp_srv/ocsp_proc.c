@@ -69,6 +69,7 @@ end :
 int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
 {
     int     ret = 0;
+
     JCertIDInfo    sIDInfo;
     JCertStatusInfo sStatusInfo;
 
@@ -87,11 +88,18 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
         if( ret != 0 )
         {
             fprintf( stderr, "Request need to sign(%d)\n", ret );
+            ret = JS_OCSP_encodeFailResponse( JS_OCSP_RESPONSE_STATUS_SIGREQUIRED, pRsp );
             goto end;
         }
 
         printf( "Request is Signed( SignerName : %s)\n", pSignerName );
-        JS_DB_getSignerByDNHash( db, pDNHash, &sDBSigner );
+        ret = JS_DB_getSignerByDNHash( db, pDNHash, &sDBSigner );
+        if( ret != 1 )
+        {
+            ret = JS_OCSP_encodeFailResponse( JS_OCSP_RESPONSE_STATUS_UNAUTHORIZED, pRsp );
+            goto end;
+        }
+
         JS_BIN_decodeHex( sDBSigner.pCert, &binSigner );
     }
 
@@ -99,6 +107,7 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
     if( ret != 0 )
     {
         fprintf( stderr, "fail to decode request(%d)\n", ret );
+        ret = JS_OCSP_encodeFailResponse( JS_OCSP_RESPONSE_STATUS_MALFORMEDREQUEST, pRsp );
         goto end;
     }
 
@@ -106,6 +115,7 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
     if( ret != 0 )
     {
         fprintf( stderr, "fail to get cert status(%d)\n", ret );
+        ret = JS_OCSP_encodeFailResponse( JS_OCSP_RESPONSE_STATUS_INTERNALERROR, pRsp );
         goto end;
     }
 
@@ -113,10 +123,12 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
     if( ret != 0 )
     {
         fprintf( stderr, "fail to encode OCSP response message(%d)\n", ret );
+        ret = JS_OCSP_encodeFailResponse( JS_OCSP_RESPONSE_STATUS_INTERNALERROR, pRsp );
         goto end;
     }
 
 end :
+
     JS_OCSP_resetCertIDInfo( &sIDInfo );
     JS_OCSP_resetCertStatusInfo( &sStatusInfo );
     if( pSignerName ) JS_free( pSignerName );
