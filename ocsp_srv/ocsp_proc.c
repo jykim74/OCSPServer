@@ -93,7 +93,7 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
         }
 
         printf( "Request is Signed( SignerName : %s)\n", pSignerName );
-        ret = JS_DB_getSignerByDNHash( db, pDNHash, &sDBSigner );
+        ret = JS_DB_getSignerByDNHash( db, JS_DB_SIGNER_TYPE_OCSP, pDNHash, &sDBSigner );
         if( ret != 1 )
         {
             ret = JS_OCSP_encodeFailResponse( JS_OCSP_RESPONSE_STATUS_UNAUTHORIZED, pRsp );
