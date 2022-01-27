@@ -11,6 +11,9 @@ BIN     g_binOcspCert = {0,0};
 BIN     g_binOcspPri = {0,0};
 int     g_nNeedSign = 0;
 
+int     g_nPort = 9010;
+int     g_nSSLPort = 9110;
+
 const char* g_dbPath = NULL;
 static char g_sConfigPath[1024];
 int g_nVerbose = 0;
@@ -305,7 +308,13 @@ int initServer()
 
     g_dbPath = JS_strdup( value );
 
-    printf( "OCSP Server Init OK\n" );
+    value = JS_CFG_getValue( g_pEnvList, "OCSP_PORT" );
+    if( value ) g_nPort = atoi( value );
+
+    value = JS_CFG_getValue( g_pEnvList, "OCSP_SSL_PORT" );
+    if( value ) g_nSSLPort = atoi( value );
+
+    printf( "OCSP Server Init OK [Port:%d SSL:%d]\n", g_nPort, g_nSSLPort );
 
     return 0;
 }
@@ -365,8 +374,8 @@ int main( int argc, char *argv[] )
     initServer();
 
     JS_THD_logInit( "./log", "ocsp", 2 );
-    JS_THD_registerService( "JS_OCSP", NULL, 9010, 4, NULL, OCSP_Service );
-    JS_THD_registerService( "JS_OCSP_SSL", NULL, 9110, 4, NULL, OCSP_SSL_Service );
+    JS_THD_registerService( "JS_OCSP", NULL, g_nPort, 4, NULL, OCSP_Service );
+    JS_THD_registerService( "JS_OCSP_SSL", NULL, g_nSSLPort, 4, NULL, OCSP_SSL_Service );
     JS_THD_serviceStartAll();
 
     return 0;
