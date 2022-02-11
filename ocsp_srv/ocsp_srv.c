@@ -6,13 +6,17 @@
 #include "js_db.h"
 #include "js_cfg.h"
 #include "ocsp_srv.h"
+#include "js_util.h"
+#include "js_log.h"
 
 BIN     g_binOcspCert = {0,0};
 BIN     g_binOcspPri = {0,0};
 int     g_nNeedSign = 0;
+int     g_nMsgDump = 0;
 
 int     g_nPort = 9010;
 int     g_nSSLPort = 9110;
+int     g_nLogLevel = JS_LOG_LEVEL_ERROR;
 
 const char* g_dbPath = NULL;
 static char g_sConfigPath[1024];
@@ -29,6 +33,7 @@ const char *getBuildInfo()
 
     return g_sBuildInfo;
 }
+
 
 int OCSP_Service( JThreadInfo *pThInfo )
 {
@@ -71,7 +76,6 @@ int OCSP_Service( JThreadInfo *pThInfo )
     }
     else if( strcasecmp( pPath, "/OCSP") == 0 )
     {
-        JS_BIN_fileWrite( &binReq, "D:/work/ber/ocsp_req.der" );
         ret = procVerify( db, &binReq, &binRsp );
         if( ret != 0 )
         {
@@ -80,7 +84,6 @@ int OCSP_Service( JThreadInfo *pThInfo )
         }
 
         pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
-        JS_BIN_fileWrite( &binRsp, "D:/work/ber/ocsp_rsp.der" );
     }
 
     JS_UTIL_createNameValList2("accept", "application/ocsp-response", &pRspHeaderList);
@@ -158,7 +161,6 @@ int OCSP_SSL_Service( JThreadInfo *pThInfo )
     }
     else if( strcasecmp( pPath, "/OCSP") == 0 )
     {
-        JS_BIN_fileWrite( &binReq, "D:/work/ber/ocsp_req.der" );
         ret = procVerify( db, &binReq, &binRsp );
         if( ret != 0 )
         {
@@ -167,7 +169,6 @@ int OCSP_SSL_Service( JThreadInfo *pThInfo )
         }
 
         pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
-        JS_BIN_fileWrite( &binRsp, "D:/work/ber/ocsp_rsp.der" );
     }
 
     JS_UTIL_createNameValList2("accept", "application/ocsp-response", &pRspHeaderList);
@@ -209,6 +210,16 @@ int initServer()
         exit(0);
     }
 
+    value = JS_CFG_getValue( g_pEnvList, "OCSP_LOG_LEVEL" );
+    if( value ) g_nLogLevel = atoi( value );
+
+    ret = JS_LOG_open( "D:\\log", "ocsp", JS_LOG_TYPE_DAILY );
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to open logfile:%d\n", ret );
+        exit(0);
+    }
+
     value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_CERT_PATH" );
     if( value == NULL )
     {
@@ -242,6 +253,13 @@ int initServer()
     {
         if( strcasecmp( value, "yes" ) == 0 )
             g_nNeedSign = 1;
+    }
+
+    value = JS_CFG_getValue( g_pEnvList, "OCSP_MSG_DUMP" );
+    if( value )
+    {
+        if( strcasecmp( value, "yes" ) == 0 )
+            g_nMsgDump = 1;
     }
 
     BIN binSSLCA = {0,0};
@@ -298,7 +316,6 @@ int initServer()
     JS_BIN_reset( &binSSLCert );
     JS_BIN_reset( &binSSLPri );
 
-
     value = JS_CFG_getValue( g_pEnvList, "DB_PATH" );
     if( value == NULL )
     {
@@ -307,6 +324,11 @@ int initServer()
     }
 
     g_dbPath = JS_strdup( value );
+    if( JS_UTIL_isFileExist( g_dbPath ) == 0 )
+    {
+        fprintf( stderr, "The data file is no exist[%s]\n", g_dbPath );
+        exit(0);
+    }
 
     value = JS_CFG_getValue( g_pEnvList, "OCSP_PORT" );
     if( value ) g_nPort = atoi( value );
@@ -315,6 +337,7 @@ int initServer()
     if( value ) g_nSSLPort = atoi( value );
 
     printf( "OCSP Server Init OK [Port:%d SSL:%d]\n", g_nPort, g_nSSLPort );
+    if( g_nNeedSign ) printf( "OCSP Server need to sign\n" );
 
     return 0;
 }

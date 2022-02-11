@@ -1,8 +1,12 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "ocsp_srv.h"
 #include "js_bin.h"
 #include "js_pki.h"
 #include "js_ocsp.h"
-
+#include "js_log.h"
 #include "sqlite3.h"
 
 #include "js_db.h"
@@ -10,6 +14,33 @@
 extern BIN  g_binOcspCert;
 extern BIN  g_binOcspPri;
 extern int g_nNeedSign;
+extern int g_nMsgDump;
+
+
+int msgDump( int nType, const BIN *pMsg )
+{
+    char        sSavePath[1024];
+
+    if( pMsg == NULL || pMsg->nLen <= 0 ) return -1;
+
+    if( JS_UTIL_isFolderExist( "dump" ) == 0 )
+    {
+        mkdir( "dump" );
+    }
+
+    if( nType == JS_OCSP_MSG_REQ )
+    {
+        sprintf( sSavePath, "dump/ocsp_req_%d_%d.bin", time(NULL), getpid() );
+    }
+    else
+    {
+        sprintf( sSavePath, "dump/ocsp_rsp_%d_%d.bin", time(NULL), getpid());
+    }
+
+
+    return JS_BIN_fileWrite( pMsg, sSavePath );
+}
+
 
 int getCertStatus( sqlite3 *db, JCertIDInfo *pIDInfo, JCertStatusInfo *pStatusInfo )
 {
@@ -52,9 +83,17 @@ int getCertStatus( sqlite3 *db, JCertIDInfo *pIDInfo, JCertStatusInfo *pStatusIn
         nStatus = JS_OCSP_STATUS_REVOKED;
         nReason = sRevoked.nReason;
         nRevokedTime = sRevoked.nRevokedDate;
+
+        printf( "The cert is revoked[Num:%d Reason:%d RevokedTime:%d]\n",
+                sCert.nNum,
+                nReason,
+                nRevokedTime );
+    }
+    else
+    {
+        printf( "The cert is good[Num:%d]\n", sCert.nNum );
     }
 
-    printf( "Cert is Good(Num:%d)\n", sCert.nNum );
 end :
     JS_OCSP_setCertStatusInfo( pStatusInfo, nStatus, nReason, nRevokedTime, NULL );
 
@@ -103,6 +142,8 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
         JS_BIN_decodeHex( sDBSigner.pCert, &binSigner );
     }
 
+    if( g_nMsgDump ) msgDump( JS_OCSP_MSG_REQ, pReq );
+
     ret = JS_OCSP_decodeRequest( pReq, &binSigner, &sIDInfo );
     if( ret != 0 )
     {
@@ -127,6 +168,7 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
         goto end;
     }
 
+    if( g_nMsgDump ) msgDump( JS_OCSP_MSG_RSP, pRsp );
 end :
 
     JS_OCSP_resetCertIDInfo( &sIDInfo );
