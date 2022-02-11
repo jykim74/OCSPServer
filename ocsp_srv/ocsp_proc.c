@@ -135,6 +135,14 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
         ret = JS_DB_getSignerByDNHash( db, JS_DB_SIGNER_TYPE_OCSP, pDNHash, &sDBSigner );
         if( ret != 1 )
         {
+            fprintf( stderr, "There is no signer cert[%s]\n", pSignerName );
+            ret = JS_OCSP_encodeFailResponse( JS_OCSP_RESPONSE_STATUS_UNAUTHORIZED, pRsp );
+            goto end;
+        }
+
+        if( sDBSigner.nStatus != 1 )
+        {
+            fprintf( stderr, "The signer is not valid[%d]\n", sDBSigner.nStatus );
             ret = JS_OCSP_encodeFailResponse( JS_OCSP_RESPONSE_STATUS_UNAUTHORIZED, pRsp );
             goto end;
         }
