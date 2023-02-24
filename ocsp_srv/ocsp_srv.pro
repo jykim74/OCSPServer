@@ -3,6 +3,8 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
 
+DEFINES += USE_OCSP
+
 SOURCES += \
         main.c \
         ocsp_proc.c \
