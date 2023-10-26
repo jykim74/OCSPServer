@@ -25,7 +25,11 @@ int msgDump( int nType, const BIN *pMsg )
 
     if( JS_UTIL_isFolderExist( "dump" ) == 0 )
     {
+#if Q_OS_WIN32
         mkdir( "dump" );
+#else
+        mkdir( "dump", 0755 );
+#endif
     }
 
     if( nType == JS_OCSP_MSG_REQ )
