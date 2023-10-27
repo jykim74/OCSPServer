@@ -227,8 +227,8 @@ int initServer()
         exit(0);
     }
 
-    ret = JS_BIN_fileRead( value, &g_binOcspCert );
-    if( ret != 0 )
+    ret = JS_BIN_fileReadBER( value, &g_binOcspCert );
+    if( ret <= 0 )
     {
         fprintf( stderr, "fail to read ocsp srv cert(%s)\n", value );
         exit(0);
@@ -241,8 +241,8 @@ int initServer()
         exit(0);
     }
 
-    ret = JS_BIN_fileRead( value, &g_binOcspPri );
-    if( ret != 0 )
+    ret = JS_BIN_fileReadBER( value, &g_binOcspPri );
+    if( ret <= 0 )
     {
         fprintf( stderr, "fail to read ocsp private key(%s)\n", value );
         exit(0);
@@ -273,8 +273,8 @@ int initServer()
         exit(0);
     }
 
-    ret = JS_BIN_fileRead( value, &binSSLCA );
-    if( ret != 0 )
+    ret = JS_BIN_fileReadBER( value, &binSSLCA );
+    if( ret <= 0 )
     {
         fprintf( stderr, "fail to read ssl ca cert(%s)\n", value );
         exit(0);
@@ -287,8 +287,8 @@ int initServer()
         exit(0);
     }
 
-    ret = JS_BIN_fileRead( value, &binSSLCert );
-    if( ret != 0 )
+    ret = JS_BIN_fileReadBER( value, &binSSLCert );
+    if( ret <= 0 )
     {
         fprintf( stderr, "fail to read ssl cert(%s)\n", value );
         exit(0);
@@ -301,8 +301,8 @@ int initServer()
         exit(0);
     }
 
-    ret = JS_BIN_fileRead( value, &binSSLPri );
-    if( ret != 0 )
+    ret = JS_BIN_fileReadBER( value, &binSSLPri );
+    if( ret <= 0 )
     {
         fprintf( stderr, "fail to read ssl private key(%s)\n", value );
         exit(0);
