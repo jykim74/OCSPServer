@@ -210,10 +210,15 @@ int initServer()
         exit(0);
     }
 
-    value = JS_CFG_getValue( g_pEnvList, "OCSP_LOG_LEVEL" );
+    value = JS_CFG_getValue( g_pEnvList, "LOG_LEVEL" );
     if( value ) g_nLogLevel = atoi( value );
 
-    ret = JS_LOG_open( "D:\\log", "ocsp", JS_LOG_TYPE_DAILY );
+    value = JS_CFG_getValue( g_pEnvList, "LOG_PATH" );
+    if( value )
+        ret = JS_LOG_open( value, "OCSP", JS_LOG_TYPE_DAILY );
+    else
+        ret = JS_LOG_open( "log", "OCSP", JS_LOG_TYPE_DAILY );
+
     if( ret != 0 )
     {
         fprintf( stderr, "fail to open logfile:%d\n", ret );
