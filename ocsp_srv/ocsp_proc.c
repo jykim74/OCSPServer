@@ -2,6 +2,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "js_gen.h"
 #include "ocsp_srv.h"
 #include "js_bin.h"
 #include "js_pki.h"
@@ -67,6 +68,7 @@ int getCertStatus( sqlite3 *db, JCertIDInfo *pIDInfo, JCertStatusInfo *pStatusIn
     if( ret != 1 )
     {
         fprintf( stderr, "fail to get Issuer by KeyHash(%s)\n", pIDInfo->pKeyHash );
+        JS_LOG_write( JS_LOG_LEVEL_ERROR, "fail to get Issuer by KeyHash(%s)", pIDInfo->pKeyHash );
         nStatus = JS_OCSP_STATUS_UNKNOWN;
         goto end;
     }
@@ -75,6 +77,7 @@ int getCertStatus( sqlite3 *db, JCertIDInfo *pIDInfo, JCertStatusInfo *pStatusIn
     if( ret != 1 )
     {
         fprintf( stderr, "fail to get cert by serial(%s)\n", pIDInfo->pSerial );
+        JS_LOG_write( JS_LOG_LEVEL_ERROR, "fail to get cert by serial(%s)", pIDInfo->pSerial );
         nStatus = JS_OCSP_STATUS_UNKNOWN;
         goto end;
     }
@@ -84,11 +87,13 @@ int getCertStatus( sqlite3 *db, JCertIDInfo *pIDInfo, JCertStatusInfo *pStatusIn
     if( ret == 1 )
     {
         fprintf( stderr, "Cert is revoked(Num:%d)\n", sCert.nNum );
+        JS_LOG_write( JS_LOG_LEVEL_INFO, "Cert is revoked(Num:%d)", sCert.nNum );
         nStatus = JS_OCSP_STATUS_REVOKED;
         nReason = sRevoked.nReason;
         nRevokedTime = sRevoked.nRevokedDate;
 
-        printf( "The cert is revoked[Num:%d Reason:%d RevokedTime:%d]\n",
+        JS_LOG_write( JS_LOG_LEVEL_INFO,
+                     "The cert is revoked[Num:%d Reason:%d RevokedTime:%d]",
                 sCert.nNum,
                 nReason,
                 nRevokedTime );
@@ -96,7 +101,10 @@ int getCertStatus( sqlite3 *db, JCertIDInfo *pIDInfo, JCertStatusInfo *pStatusIn
     else
     {
         printf( "The cert is good[Num:%d]\n", sCert.nNum );
+        JS_LOG_write( JS_LOG_LEVEL_INFO, "The cert is good[Num:%d]", sCert.nNum );
     }
+
+    JS_addAudit( db, JS_GEN_KIND_OCSP_SRV, JS_GEN_OP_CHECK_OCSP, NULL );
 
 end :
     JS_OCSP_setCertStatusInfo( pStatusInfo, nStatus, nReason, nRevokedTime, NULL );

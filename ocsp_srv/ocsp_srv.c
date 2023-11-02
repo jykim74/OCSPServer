@@ -67,6 +67,8 @@ int OCSP_Service( JThreadInfo *pThInfo )
         goto end;
     }
 
+    JS_LOG_write( JS_LOG_LEVEL_VERBOSE, "RecvBin Len: %d", binReq.nLen );
+
     if( pMethInfo ) printf( "MethInfo : %s\n", pMethInfo );
     JS_HTTP_getMethodPath( pMethInfo, &nType, &pPath, &pParamList );
 
@@ -80,6 +82,7 @@ int OCSP_Service( JThreadInfo *pThInfo )
         if( ret != 0 )
         {
             fprintf( stderr, "procVerify fail(%d)\n", ret );
+            JS_LOG_write( JS_LOG_LEVEL_ERROR, "procVerify fail(%d)", ret );
             goto end;
         }
 
@@ -94,6 +97,7 @@ int OCSP_Service( JThreadInfo *pThInfo )
     if( ret != 0 )
     {
         fprintf( stderr, "fail to send message(%d)\n", ret );
+        JS_LOG_write( JS_LOG_LEVEL_ERROR, "fail to send message(%d)", ret );
         goto end;
     }
 
@@ -342,7 +346,10 @@ int initServer()
     if( value ) g_nSSLPort = atoi( value );
 
     printf( "OCSP Server Init OK [Port:%d SSL:%d]\n", g_nPort, g_nSSLPort );
-    if( g_nNeedSign ) printf( "OCSP Server need to sign\n" );
+    JS_LOG_write( JS_LOG_LEVEL_INFO, "OCSP Server Init OK [Port:%d SSL:%d]", g_nPort, g_nSSLPort );
+
+
+    if( g_nNeedSign ) JS_LOG_write( JS_LOG_LEVEL_INFO, "Client have to sign for Request" );
 
     return 0;
 }
