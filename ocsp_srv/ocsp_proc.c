@@ -9,6 +9,7 @@
 #include "js_ocsp.h"
 #include "js_log.h"
 #include "sqlite3.h"
+#include "js_pkcs11.h"
 
 #include "js_db.h"
 
@@ -16,7 +17,7 @@ extern BIN  g_binOcspCert;
 extern BIN  g_binOcspPri;
 extern int g_nNeedSign;
 extern int g_nMsgDump;
-
+extern  JP11_CTX        *g_pP11CTX;
 
 int msgDump( int nType, const BIN *pMsg )
 {
@@ -180,7 +181,11 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
         goto end;
     }
 
-    ret = JS_OCSP_encodeResponse( pReq, &g_binOcspCert, &g_binOcspPri, "SHA1", &sIDInfo, &sStatusInfo, pRsp );
+    if( g_pP11CTX )
+        ret = JS_OCSP_encodeResponseByP11( pReq, &g_binOcspCert, &g_binOcspPri, g_pP11CTX, "SHA1", &sIDInfo, &sStatusInfo, pRsp );
+    else
+        ret = JS_OCSP_encodeResponse( pReq, &g_binOcspCert, &g_binOcspPri, "SHA1", &sIDInfo, &sStatusInfo, pRsp );
+
     if( ret != 0 )
     {
         fprintf( stderr, "fail to encode OCSP response message(%d)\n", ret );

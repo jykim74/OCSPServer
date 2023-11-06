@@ -8,9 +8,12 @@
 #include "ocsp_srv.h"
 #include "js_util.h"
 #include "js_log.h"
+#include "js_pki.h"
+#include "js_pkcs11.h"
 
 BIN     g_binOcspCert = {0,0};
 BIN     g_binOcspPri = {0,0};
+JP11_CTX        *g_pP11CTX = NULL;
 int     g_nNeedSign = 0;
 int     g_nMsgDump = 0;
 
@@ -202,6 +205,165 @@ end :
     return ret;
 }
 
+int loginHSM()
+{
+    int ret = 0;
+    int nFlags = 0;
+
+
+    CK_ULONG uSlotCnt = 0;
+    CK_SLOT_ID  sSlotList[10];
+
+    int nUserType = 0;
+
+    nFlags |= CKF_RW_SESSION;
+    nFlags |= CKF_SERIAL_SESSION;
+    nUserType = CKU_USER;
+
+    int nSlotID = -1;
+    const char *pLibPath = NULL;
+    const char *pPIN = NULL;
+    int nPINLen = 0;
+    const char *value = NULL;
+
+    pLibPath = JS_CFG_getValue( g_pEnvList, "OCSP_HSM_LIB_PATH" );
+    if( pLibPath == NULL )
+    {
+        fprintf( stderr, "You have to set 'OCSP_HSM_LIB_PATH'\n" );
+        exit(0);
+    }
+
+    value = JS_CFG_getValue( g_pEnvList, "OCSP_HSM_SLOT_ID" );
+    if( value == NULL )
+    {
+        fprintf( stderr, "You have to set 'OCSP_HSM_SLOT_ID'\n" );
+        exit(0);
+    }
+
+    nSlotID = atoi( value );
+
+    pPIN = JS_CFG_getValue( g_pEnvList, "OCSP_HSM_PIN" );
+    if( pPIN == NULL )
+    {
+        fprintf( stderr, "You have to set 'OCSP_HSM_PIN'\n" );
+        exit(0);
+    }
+
+    nPINLen = atoi( pPIN );
+
+    value = JS_CFG_getValue( g_pEnvList, "OCSP_HSM_KEY_ID" );
+    if( value == NULL )
+    {
+        fprintf( stderr, "You have to set 'OCSP_HSM_KEY_ID'\n" );
+        exit( 0);
+    }
+
+    JS_BIN_decodeHex( value, &g_binOcspPri );
+
+    ret = JS_PKCS11_LoadLibrary( &g_pP11CTX, pLibPath );
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to load library(%s:%d)\n", value, ret );
+        exit(0);
+    }
+
+    ret = JS_PKCS11_Initialize( g_pP11CTX, NULL );
+    if( ret != CKR_OK )
+    {
+        fprintf( stderr, "fail to run initialize(%d)\n", ret );
+        return -1;
+    }
+
+    ret = JS_PKCS11_GetSlotList2( g_pP11CTX, CK_TRUE, sSlotList, &uSlotCnt );
+    if( ret != CKR_OK )
+    {
+        fprintf( stderr, "fail to run getSlotList fail(%d)\n", ret );
+        return -1;
+    }
+
+    if( uSlotCnt < 1 )
+    {
+        fprintf( stderr, "there is no slot(%d)\n", uSlotCnt );
+        return -1;
+    }
+
+    ret = JS_PKCS11_OpenSession( g_pP11CTX, sSlotList[nSlotID], nFlags );
+    if( ret != CKR_OK )
+    {
+        fprintf( stderr, "fail to run opensession(%s:%x)\n", JS_PKCS11_GetErrorMsg(ret), ret );
+        return -1;
+    }
+
+    ret = JS_PKCS11_Login( g_pP11CTX, nUserType, pPIN, nPINLen );
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to run login hsm(%d)\n", ret );
+        return -1;
+    }
+
+    printf( "HSM login ok\n" );
+
+    return 0;
+}
+
+int readPriKey()
+{
+    int ret = 0;
+    const char *value = NULL;
+
+    value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_ENC" );
+    if( value && strcasecmp( value, "NO" ) == 0 )
+    {
+        value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_PATH" );
+        if( value == NULL )
+        {
+            fprintf( stderr, "You have to set 'OCSP_SRV_PRIKEY_PATH'" );
+            exit(0);
+        }
+
+        ret = JS_BIN_fileReadBER( value, &g_binOcspPri );
+        if( ret <= 0 )
+        {
+            fprintf( stderr, "fail to read private key file(%s:%d)\n", value, ret );
+            exit( 0 );
+        }
+    }
+    else
+    {
+        BIN binEnc = {0,0};
+        const char *pPasswd = NULL;
+
+        pPasswd = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_PASSWD" );
+        if( pPasswd == NULL )
+        {
+            fprintf( stderr, "You have to set 'OCSP_SRV_PRIKEY_PASSWD'\n" );
+            exit(0);
+        }
+
+        value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_PATH" );
+        if( value == NULL )
+        {
+            fprintf( stderr, "You have to set 'OCSP_SRV_PRIKEY_PATH'" );
+            exit(0);
+        }
+
+        ret = JS_BIN_fileReadBER( value, &binEnc );
+        if( ret <= 0 )
+        {
+            fprintf( stderr, "fail to read private key file(%s:%d)\n", value, ret );
+            exit( 0 );
+        }
+
+        ret = JS_PKI_decryptPrivateKey( pPasswd, &binEnc, NULL, &g_binOcspPri );
+        if( ret != 0 )
+        {
+            fprintf( stderr, "invalid password (%d)\n", ret );
+            exit(0);
+        }
+    }
+    return 0;
+}
+
 int initServer()
 {
     int ret = 0;
@@ -243,18 +405,24 @@ int initServer()
         exit(0);
     }
 
-    value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_PATH" );
-    if( value == NULL )
+    value = JS_CFG_getValue( g_pEnvList, "OCSP_HSM_USE" );
+    if( value && strcasecmp( value, "YES" ) == 0 )
     {
-        fprintf( stderr, "You have to set 'OCSP_SRV_PRIKEY_PATH'\n" );
-        exit(0);
+        ret = loginHSM();
+        if( ret != 0 )
+        {
+            fprintf( stderr, "fail to login HSM:%d\n", ret );
+            exit(0);
+        }
     }
-
-    ret = JS_BIN_fileReadBER( value, &g_binOcspPri );
-    if( ret <= 0 )
+    else
     {
-        fprintf( stderr, "fail to read ocsp private key(%s)\n", value );
-        exit(0);
+        ret = readPriKey();
+        if( ret != 0 )
+        {
+            fprintf( stderr, "fail to read private key:%d\n", ret );
+            exit( 0 );
+        }
     }
 
     value = JS_CFG_getValue( g_pEnvList, "OCSP_NEED_SIGN" );
