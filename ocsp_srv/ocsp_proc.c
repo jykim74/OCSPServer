@@ -182,9 +182,15 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
     }
 
     if( g_pP11CTX )
+    {
         ret = JS_OCSP_encodeResponseByP11( pReq, &g_binOcspCert, &g_binOcspPri, g_pP11CTX, "SHA1", &sIDInfo, &sStatusInfo, pRsp );
+        LV( "EncodeResponsByP11 Ret: %d", ret );
+    }
     else
+    {
         ret = JS_OCSP_encodeResponse( pReq, &g_binOcspCert, &g_binOcspPri, "SHA1", &sIDInfo, &sStatusInfo, pRsp );
+        LV( "EncodeResponse Ret: %d", ret );
+    }
 
     if( ret != 0 )
     {
@@ -193,7 +199,11 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
         goto end;
     }
 
-    if( g_nMsgDump ) msgDump( JS_OCSP_MSG_RSP, pRsp );
+    if( g_nMsgDump )
+    {
+        msgDump( JS_OCSP_MSG_RSP, pRsp );
+        LI( "Response Dumped" );
+    }
 end :
 
     JS_OCSP_resetCertIDInfo( &sIDInfo );
