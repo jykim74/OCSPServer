@@ -588,18 +588,21 @@ int initServer( sqlite3 *db )
     JS_BIN_reset( &binSSLCert );
     JS_BIN_reset( &binSSLPri );
 
-    value = JS_CFG_getValue( g_pEnvList, "DB_PATH" );
-    if( value == NULL )
+    if( g_dbPath == NULL && g_nConfigDB == 0 )
     {
-        fprintf( stderr, "You have to set 'DB_PATH'\n" );
-        exit(0);
-    }
+        value = JS_CFG_getValue( g_pEnvList, "DB_PATH" );
+        if( value == NULL )
+        {
+            fprintf( stderr, "You have to set 'DB_PATH'\n" );
+            exit(0);
+        }
 
-    g_dbPath = JS_strdup( value );
-    if( JS_UTIL_isFileExist( g_dbPath ) == 0 )
-    {
-        fprintf( stderr, "The data file is no exist[%s]\n", g_dbPath );
-        exit(0);
+        g_dbPath = JS_strdup( value );
+        if( JS_UTIL_isFileExist( g_dbPath ) == 0 )
+        {
+            fprintf( stderr, "The data file is no exist[%s]\n", g_dbPath );
+            exit(0);
+        }
     }
 
     value = JS_CFG_getValue( g_pEnvList, "OCSP_PORT" );
@@ -623,7 +626,7 @@ void printUsage()
     printf( "[Options]\n" );
     printf( "-v         : Verbose on(%d)\n", g_nVerbose );
     printf( "-c config  : Set config file(%s)\n", g_sConfigPath );
-    printf( "-d dbfile  : Use DB config(%s)\n", g_dbPath ? g_dbPath : "" );
+    printf( "-d dbfile  : Use DB config(%d)\n", g_nConfigDB );
     printf( "-h         : Print this message\n" );
 }
 
