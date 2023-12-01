@@ -209,6 +209,11 @@ end :
     return ret;
 }
 
+int loginHSM_DB()
+{
+    return 0;
+}
+
 int loginHSM()
 {
     int ret = 0;
@@ -310,6 +315,70 @@ int loginHSM()
     return 0;
 }
 
+int readPriKeyDB( sqlite3 *db )
+{
+    int ret = 0;
+    const char *value = NULL;
+    JDB_KeyPair sKeyPair;
+
+    memset( &sKeyPair, 0x00, sizeof(sKeyPair));
+
+    value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_NUM" );
+    if( value == NULL )
+    {
+        fprintf( stderr, "You have to set 'OCSP_SRV_PRIKEY_NUM'" );
+        exit(0);
+    }
+
+    ret = JS_DB_getKeyPair(db, atoi(value), &sKeyPair );
+    if( ret != 1 )
+    {
+        fprintf( stderr, "There is no key pair: %d\r\n", atoi(value));
+        exit(0);
+    }
+
+    // 암호화 경우 복호화 필요함
+    value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_ENC" );
+
+    if( value && strcasecmp( value, "NO" ) == 0 )
+    {
+        JS_BIN_decodeHex( sKeyPair.pPrivate, &g_binOcspPri );
+
+        if( ret <= 0 )
+        {
+            fprintf( stderr, "fail to read private key file(%s:%d)\n", value, ret );
+            exit( 0 );
+        }
+    }
+    else
+    {
+        BIN binEnc = {0,0};
+        const char *pPasswd = NULL;
+
+        pPasswd = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_PASSWD" );
+        if( pPasswd == NULL )
+        {
+            fprintf( stderr, "You have to set 'OCSP_SRV_PRIKEY_PASSWD'\n" );
+            exit(0);
+        }
+
+        JS_BIN_decodeHex( sKeyPair.pPrivate, &binEnc );
+
+        ret = JS_PKI_decryptPrivateKey( pPasswd, &binEnc, NULL, &g_binOcspPri );
+        if( ret != 0 )
+        {
+            fprintf( stderr, "invalid password (%d)\n", ret );
+            exit(0);
+        }
+
+        JS_BIN_reset( &binEnc );
+    }
+
+    JS_DB_resetKeyPair( &sKeyPair );
+
+    return 0;
+}
+
 int readPriKey()
 {
     int ret = 0;
@@ -368,74 +437,11 @@ int readPriKey()
     return 0;
 }
 
-int initServerDB()
-{
-    int ret = 0;
-    char sValue[1024];
-    JDB_Cert    sCert;
 
-    memset( &sCert, 0x00, sizeof(sCert));
-
-    if( JS_UTIL_isFileExist( g_dbPath ) == 0 )
-    {
-        fprintf( stderr, "The data file is no exist[%s]\n", g_dbPath );
-        exit(0);
-    }
-
-    sqlite3* db = JS_DB_open( g_dbPath );
-    if( db == NULL )
-    {
-        fprintf( stderr, "fail to open db file(%s)\n", g_dbPath );
-        ret = -1;
-        goto end;
-    }
-
-    ret = JS_DB_getConfigByName( db, JS_GEN_KIND_OCSP_SRV, "LOG_LEVEL", sValue );
-    if( ret == 1 )
-    {
-        g_nLogLevel = atoi( sValue );
-    }
-
-    ret = JS_DB_getConfigByName( db, JS_GEN_KIND_OCSP_SRV, "LOG_PATH", sValue );
-    if( ret == 1 )
-        ret = JS_LOG_open( sValue, "OCSP", JS_LOG_TYPE_DAILY );
-    else
-        ret = JS_LOG_open( "log", "OCSP", JS_LOG_TYPE_DAILY );
-
-    if( ret != 0 )
-    {
-        fprintf( stderr, "fail to open logfile:%d\n", ret );
-        exit(0);
-    }
-
-    ret = JS_DB_getConfigByName( db, JS_GEN_KIND_OCSP_SRV, "OCSP_SRV_CERT_NUM", sValue );
-    if( ret != 1 )
-    {
-        fprintf( stderr, "You have to set 'OCSP_SRV_CERT_NUM'\n" );
-        exit(0);
-    }
-
-    JS_DB_getCert( db, atoi(sValue), &sCert );
-
-    ret = 0;
-end :
-    if( db ) JS_DB_close( db );
-    JS_DB_resetCertList( &sCert );
-
-    return ret;
-}
-
-int initServer()
+int initServer( sqlite3 *db )
 {
     int ret = 0;
     const char *value = NULL;
-
-    ret = JS_CFG_readConfig( g_sConfigPath, &g_pEnvList );
-    if( ret != 0 )
-    {
-        fprintf( stderr, "fail to open config file(%s)\n", g_sConfigPath );
-        exit(0);
-    }
 
     value = JS_CFG_getValue( g_pEnvList, "LOG_LEVEL" );
     if( value ) g_nLogLevel = atoi( value );
@@ -452,18 +458,38 @@ int initServer()
         exit(0);
     }
 
-    value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_CERT_PATH" );
-    if( value == NULL )
+    if( g_nConfigDB == 1 )
     {
-        fprintf( stderr, "You have to set 'OCSP_SRV_CERT_PATH'\n" );
-        exit(0);
-    }
+        JDB_Cert sCert;
+        memset( &sCert, 0x00, sizeof(sCert));
 
-    ret = JS_BIN_fileReadBER( value, &g_binOcspCert );
-    if( ret <= 0 )
+        value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_CERT_NUM" );
+        if( value == NULL )
+        {
+            fprintf( stderr, "You have to set 'OCSP_SRV_CERT_NUM'\n" );
+            exit(0);
+        }
+
+        JS_DB_getCert( db, atoi(value), &sCert );
+        ret = JS_BIN_decodeHex( sCert.pCert, &g_binOcspCert );
+
+        JS_DB_resetCert( &sCert );
+    }
+    else
     {
-        fprintf( stderr, "fail to read ocsp srv cert(%s)\n", value );
-        exit(0);
+        value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_CERT_PATH" );
+        if( value == NULL )
+        {
+            fprintf( stderr, "You have to set 'OCSP_SRV_CERT_PATH'\n" );
+            exit(0);
+        }
+
+        ret = JS_BIN_fileReadBER( value, &g_binOcspCert );
+        if( ret <= 0 )
+        {
+            fprintf( stderr, "fail to read ocsp srv cert(%s)\n", value );
+            exit(0);
+        }
     }
 
     value = JS_CFG_getValue( g_pEnvList, "OCSP_HSM_USE" );
@@ -478,7 +504,15 @@ int initServer()
     }
     else
     {
-        ret = readPriKey();
+        if( g_nConfigDB == 1 )
+        {
+            ret = readPriKeyDB( db );
+        }
+        else
+        {
+            ret = readPriKey();
+        }
+
         if( ret != 0 )
         {
             fprintf( stderr, "fail to read private key:%d\n", ret );
@@ -593,29 +627,11 @@ void printUsage()
     printf( "-h         : Print this message\n" );
 }
 
-#if 0
-int main()
-{
-    JProcInit   sProcInit;
-
-    memset( &sProcInit, 0x00, sizeof(sProcInit));
-
-    sProcInit.nCreateNum = 2;
-    JS_PRC_logInit( "./log", "ocsp", 3 );
-    JS_PRC_initRegister( &sProcInit );
-
-    JS_PRC_register( "JS_OCSP", NULL, 9010, 4, NULL, OCSP_Service );
-    JS_PRC_register( "JS_OCSP_SSL", NULL, 9110, 4, NULL, OCSP_SSL_Service );
-
-    JS_PRC_start();
-
-    return 0;
-}
-
-#else
 int main( int argc, char *argv[] )
 {
+    int ret = 0;
     int nOpt = 0;
+    sqlite3* db = NULL;
 
     sprintf( g_sConfigPath, "%s", "../ocsp_srv.cfg" );
 
@@ -643,12 +659,50 @@ int main( int argc, char *argv[] )
 
     if( g_nConfigDB == 1 )
     {
-        initServerDB();
+        JDB_ConfigList *pConfigList = NULL;
+
+        if( JS_UTIL_isFileExist( g_dbPath ) == 0 )
+        {
+            fprintf( stderr, "The data file is no exist[%s]\n", g_dbPath );
+            exit(0);
+        }
+
+        db = JS_DB_open( g_dbPath );
+        if( db == NULL )
+        {
+            fprintf( stderr, "fail to open db file(%s)\n", g_dbPath );
+            exit(0);
+        }
+
+        ret = JS_DB_getConfigListByKind( db, JS_GEN_KIND_OCSP_SRV, &pConfigList );
+
+        ret = JS_CFG_readConfigFromDB( pConfigList, &g_pEnvList );
+        if( ret != 0 )
+        {
+            fprintf( stderr, "fail to open config file(%s)\n", g_sConfigPath );
+            exit(0);
+        }
+
+
+        if( pConfigList ) JS_DB_resetConfigList( &pConfigList );
     }
     else
     {
-        initServer();
+        ret = JS_CFG_readConfig( g_sConfigPath, &g_pEnvList );
+        if( ret != 0 )
+        {
+            fprintf( stderr, "fail to open config file(%s)\n", g_sConfigPath );
+            exit(0);
+        }
     }
+
+    initServer( db );
+
+    if( g_nConfigDB == 1 )
+    {
+        if( db ) JS_DB_close( db );
+    }
+
 
     JS_THD_logInit( "./log", "ocsp", 2 );
     JS_THD_registerService( "JS_OCSP", NULL, g_nPort, 4, NULL, OCSP_Service );
@@ -657,4 +711,4 @@ int main( int argc, char *argv[] )
 
     return 0;
 }
-#endif
+
