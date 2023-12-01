@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <getopt.h>
 
+#include "js_gen.h"
 #include "js_process.h"
 #include "js_http.h"
 #include "js_db.h"
@@ -14,6 +15,8 @@
 BIN     g_binOcspCert = {0,0};
 BIN     g_binOcspPri = {0,0};
 JP11_CTX        *g_pP11CTX = NULL;
+
+int     g_nConfigDB = 0;
 int     g_nNeedSign = 0;
 int     g_nMsgDump = 0;
 
@@ -23,6 +26,7 @@ int     g_nLogLevel = JS_LOG_LEVEL_ERROR;
 
 const char* g_dbPath = NULL;
 static char g_sConfigPath[1024];
+
 int g_nVerbose = 0;
 JEnvList    *g_pEnvList = NULL;
 SSL_CTX     *g_pSSLCTX = NULL;
@@ -364,6 +368,63 @@ int readPriKey()
     return 0;
 }
 
+int initServerDB()
+{
+    int ret = 0;
+    char sValue[1024];
+    JDB_Cert    sCert;
+
+    memset( &sCert, 0x00, sizeof(sCert));
+
+    if( JS_UTIL_isFileExist( g_dbPath ) == 0 )
+    {
+        fprintf( stderr, "The data file is no exist[%s]\n", g_dbPath );
+        exit(0);
+    }
+
+    sqlite3* db = JS_DB_open( g_dbPath );
+    if( db == NULL )
+    {
+        fprintf( stderr, "fail to open db file(%s)\n", g_dbPath );
+        ret = -1;
+        goto end;
+    }
+
+    ret = JS_DB_getConfigByName( db, JS_GEN_KIND_OCSP_SRV, "LOG_LEVEL", sValue );
+    if( ret == 1 )
+    {
+        g_nLogLevel = atoi( sValue );
+    }
+
+    ret = JS_DB_getConfigByName( db, JS_GEN_KIND_OCSP_SRV, "LOG_PATH", sValue );
+    if( ret == 1 )
+        ret = JS_LOG_open( sValue, "OCSP", JS_LOG_TYPE_DAILY );
+    else
+        ret = JS_LOG_open( "log", "OCSP", JS_LOG_TYPE_DAILY );
+
+    if( ret != 0 )
+    {
+        fprintf( stderr, "fail to open logfile:%d\n", ret );
+        exit(0);
+    }
+
+    ret = JS_DB_getConfigByName( db, JS_GEN_KIND_OCSP_SRV, "OCSP_SRV_CERT_NUM", sValue );
+    if( ret != 1 )
+    {
+        fprintf( stderr, "You have to set 'OCSP_SRV_CERT_NUM'\n" );
+        exit(0);
+    }
+
+    JS_DB_getCert( db, atoi(sValue), &sCert );
+
+    ret = 0;
+end :
+    if( db ) JS_DB_close( db );
+    JS_DB_resetCertList( &sCert );
+
+    return ret;
+}
+
 int initServer()
 {
     int ret = 0;
@@ -527,7 +588,8 @@ void printUsage()
     printf( "JS OCSP Server ( %s )\n", getBuildInfo() );
     printf( "[Options]\n" );
     printf( "-v         : Verbose on(%d)\n", g_nVerbose );
-    printf( "-c config : set config file(%s)\n", g_sConfigPath );
+    printf( "-c config  : Set config file(%s)\n", g_sConfigPath );
+    printf( "-d dbfile  : Use DB config(%s)\n", g_dbPath ? g_dbPath : "" );
     printf( "-h         : Print this message\n" );
 }
 
@@ -571,10 +633,22 @@ int main( int argc, char *argv[] )
         case 'c':
             sprintf( g_sConfigPath, "%s", optarg );
             break;
+
+        case 'd' :
+            g_dbPath = JS_strdup( optarg );
+            g_nConfigDB = 1;
+            break;
         }
     }
 
-    initServer();
+    if( g_nConfigDB == 1 )
+    {
+        initServerDB();
+    }
+    else
+    {
+        initServer();
+    }
 
     JS_THD_logInit( "./log", "ocsp", 2 );
     JS_THD_registerService( "JS_OCSP", NULL, g_nPort, 4, NULL, OCSP_Service );

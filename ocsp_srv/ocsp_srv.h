@@ -8,6 +8,9 @@
 #define     JS_OCSP_MSG_REQ             0
 #define     JS_OCSP_MSG_RSP             1
 
+int initServerDB();
+int initServer();
+
 int msgDump( int nType, const BIN *pMsg );
 int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp );
 
