@@ -57,12 +57,12 @@ int OCSP_Service( JThreadInfo *pThInfo )
     int             nType = -1;
     char            *pPath = NULL;
 
-    printf( "Service start\n" );
+    LI( "Service start" );
 
     sqlite3* db = JS_DB_open( g_dbPath );
     if( db == NULL )
     {
-        fprintf( stderr, "fail to open db file(%s)\n", g_dbPath );
+        LE( "fail to open db file(%s)", g_dbPath );
         ret = -1;
         goto end;
     }
@@ -70,11 +70,11 @@ int OCSP_Service( JThreadInfo *pThInfo )
     ret = JS_HTTP_recvBin( pThInfo->nSockFd, &pMethInfo, &pHeaderList, &binReq );
     if( ret != 0 )
     {
-        fprintf( stderr, "fail to receive message(%d)\n", ret );
+        LE( "fail to receive message(%d)", ret );
         goto end;
     }
 
-    JS_LOG_write( JS_LOG_LEVEL_VERBOSE, "RecvBin Len: %d", binReq.nLen );
+    LV( "RecvBin Len: %d", binReq.nLen );
 
     if( pMethInfo ) printf( "MethInfo : %s\n", pMethInfo );
     JS_HTTP_getMethodPath( pMethInfo, &nType, &pPath, &pParamList );
@@ -88,8 +88,7 @@ int OCSP_Service( JThreadInfo *pThInfo )
         ret = procVerify( db, &binReq, &binRsp );
         if( ret != 0 )
         {
-            fprintf( stderr, "procVerify fail(%d)\n", ret );
-            JS_LOG_write( JS_LOG_LEVEL_ERROR, "procVerify fail(%d)", ret );
+            LE( "procVerify fail(%d)", ret );
             goto end;
         }
 
@@ -103,8 +102,7 @@ int OCSP_Service( JThreadInfo *pThInfo )
     ret = JS_HTTP_sendBin( pThInfo->nSockFd, pMethod, pRspHeaderList, &binRsp );
     if( ret != 0 )
     {
-        fprintf( stderr, "fail to send message(%d)\n", ret );
-        JS_LOG_write( JS_LOG_LEVEL_ERROR, "fail to send message(%d)", ret );
+        LE( "fail to send message(%d)", ret );
         goto end;
     }
 
@@ -139,12 +137,12 @@ int OCSP_SSL_Service( JThreadInfo *pThInfo )
     char            *pPath = NULL;
     SSL             *pSSL = NULL;
 
-    printf( "SSL Service start\n" );
+    LI( "SSL Service start" );
 
     sqlite3* db = JS_DB_open( g_dbPath );
     if( db == NULL )
     {
-        fprintf( stderr, "fail to open db file(%s)\n", g_dbPath );
+        LE( "fail to open db file(%s)", g_dbPath );
         ret = -1;
         goto end;
     }
@@ -152,18 +150,18 @@ int OCSP_SSL_Service( JThreadInfo *pThInfo )
     ret = JS_SSL_accept( g_pSSLCTX, pThInfo->nSockFd, &pSSL );
     if( ret != 0 )
     {
-        fprintf( stderr, "fail to accept SSL(%d)\n", ret );
+        LE( "fail to accept SSL(%d)", ret );
         goto end;
     }
 
     ret = JS_HTTPS_recvBin( pSSL, &pMethInfo, &pHeaderList, &binReq );
     if( ret != 0 )
     {
-        fprintf( stderr, "fail to receive message(%d)\n", ret );
+        LE( "fail to receive message(%d)", ret );
         goto end;
     }
 
-    if( pMethInfo ) printf( "MethInfo : %s\n", pMethInfo );
+    if( pMethInfo ) LI( "MethInfo : %s", pMethInfo );
     JS_HTTP_getMethodPath( pMethInfo, &nType, &pPath, &pParamList );
 
     if( strcasecmp( pPath, "PING") == 0 )
@@ -189,7 +187,7 @@ int OCSP_SSL_Service( JThreadInfo *pThInfo )
     ret = JS_HTTPS_sendBin( pSSL, pMethod, pRspHeaderList, &binRsp );
     if( ret != 0 )
     {
-        fprintf( stderr, "fail to send message(%d)\n", ret );
+        LE( "fail to send message(%d)", ret );
         goto end;
     }
 
