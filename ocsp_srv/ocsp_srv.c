@@ -20,8 +20,8 @@ int     g_nConfigDB = 0;
 int     g_nNeedSign = 0;
 int     g_nMsgDump = 0;
 
-int     g_nPort = 9010;
-int     g_nSSLPort = 9110;
+int     g_nPort = JS_OCSP_PORT;
+int     g_nSSLPort = JS_OCSP_SSL_PORT;
 int     g_nLogLevel = JS_LOG_LEVEL_ERROR;
 
 const char* g_dbPath = NULL;
