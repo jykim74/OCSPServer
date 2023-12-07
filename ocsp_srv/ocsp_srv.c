@@ -629,6 +629,31 @@ void printUsage()
     printf( "-h         : Print this message\n" );
 }
 
+
+#ifndef WIN32
+#ifdef USE_PRC
+static int MainProcessInit()
+{
+    return 0;
+}
+
+static int MainProcessTerm()
+{
+    return 0;
+}
+
+static int ChildProcessInit()
+{
+    return 0;
+}
+
+static int ChildProcessTerm()
+{
+    return 0;
+}
+#endif
+#endif
+
 int main( int argc, char *argv[] )
 {
     int ret = 0;
@@ -712,11 +737,38 @@ int main( int argc, char *argv[] )
 
     LI( "OCSP Server initialized succfully" );
 
+#ifndef WIN32
+#ifdef USE_PRC
+    JProcInit sProcInit;
+
+    memset( &sProcInit, 0x00, sizeof(JProcInit));
+
+    sProcInit.nCreateNum = 1;
+    sProcInit.ParentInitFunction = MainProcessInit;
+    sProcInit.ParemtTermFunction = MainProcessTerm;
+    sProcInit.ChidInitFunction = ChildProcessInit;
+    sProcInit.ChildTermFunction = ChildProcessTerm;
+
+    JS_PRC_initRegister( &sProcInit );
+    JS_PRC_register( "JS_OCSP", NULL, g_nPort, 4, OCSP_Service );
+    JS_PRC_register( "JS_OCSP_SSL", NULL, g_nSSLPort, 4, OCSP_SSL_Service );
+    JS_PRC_registerAdmin( NULL, g_nPort + 10 );
+    JS_PRC_detach();
+    JS_PRC_start();
+#else
     JS_THD_logInit( "./log", "ocsp", 2 );
     JS_THD_registerService( "JS_OCSP", NULL, g_nPort, 4, OCSP_Service );
     JS_THD_registerService( "JS_OCSP_SSL", NULL, g_nSSLPort, 4, OCSP_SSL_Service );
     JS_THD_registerAdmin( NULL, g_nPort + 10 );
     JS_THD_serviceStartAll();
+#endif
+#else
+    JS_THD_logInit( "./log", "ocsp", 2 );
+    JS_THD_registerService( "JS_OCSP", NULL, g_nPort, 4, OCSP_Service );
+    JS_THD_registerService( "JS_OCSP_SSL", NULL, g_nSSLPort, 4, OCSP_SSL_Service );
+    JS_THD_registerAdmin( NULL, g_nPort + 10 );
+    JS_THD_serviceStartAll();
+#endif
 
     return 0;
 }
