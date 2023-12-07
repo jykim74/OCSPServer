@@ -19,7 +19,9 @@ add_executable(ocsp_srv
 
 
 
-if(WIN32)
+IF (WIN32)
+    message( STATUS "Windows Env" )
+
     include_directories(
         ../../PKILib/lib/win64/openssl3/include
         ../../PKILib
@@ -40,7 +42,9 @@ if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE
         PKILib crypto ssl ltdl sqlite3 ws2_32 )
 
-elseif(APPLE)
+ELSEIF(APPLE)
+    message( STATUS "MacOS Env" )
+
     include_directories(
         ../../PKILib/lib/win64/openssl3/include
         ../../PKILib
@@ -60,25 +64,31 @@ elseif(APPLE)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
         PKILib crypto ssl ltdl sqlite3 )
-elseif(LINUX)
+
+ELSE()
+    message( STATUS "Linux Env" )
+
     include_directories( ../../PKILib
         "/usr/local/include" )
 
     if( CMAKE_BUILD_TYPE STREQUAL "Debug" )
         target_link_directories( ${PROJECT_NAME} PRIVATE
-        ../../build-PKILib-Desktop_Qt_5_13_2_MinGW_64_bit-Debug
-        ../../PKILib/lib/win64/debug/openssl3/lib64
+        ../../build-PKILib-Desktop_Qt_5_13_2_GCC_64bit-Debug
+        ../../PKILib/lib/linux/debug/openssl3/lib64
         "/usr/local/lib" )
     elseif( CMAKE_BUILD_TYPE STREQUAL "Release" )
         target_link_directories( ${PROJECT_NAME} PRIVATE
-        ../../build-PKILib-Desktop_Qt_5_13_2_MinGW_64_bit-Release
-        ../../PKILib/lib/win64/openssl3/lib64
+        ../../build-PKILib-Desktop_Qt_5_13_2_GCC_64bit-Release
+        ../../PKILib/lib/linux/openssl3/lib64
         "/usr/local/lib" )
     endif()
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
-        PKILib crypto ssl ltdl sqlite3 )
-endif()
+        PKILib crypto ssl ltdl sqlite3 pthread )
+
+    target_compile_definitions( ${PROJECT_NAME} PRIVATE USE_PRC )
+
+ENDIF()
 
 
 target_compile_definitions( ${PROJECT_NAME} PRIVATE USE_OCSP )
