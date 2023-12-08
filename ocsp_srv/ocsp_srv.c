@@ -754,8 +754,6 @@ int main( int argc, char *argv[] )
 
     JS_PRC_start();
     JS_PRC_detach();
-
-    return 0;
 #else
     JS_THD_logInit( "./log", "ocsp", 2 );
     JS_THD_registerService( "JS_OCSP", NULL, g_nPort, 4, OCSP_Service );

@@ -68,7 +68,9 @@ ELSEIF(APPLE)
 ELSE()
     message( STATUS "Linux Env" )
 
-    include_directories( ../../PKILib
+    include_directories(
+        ../../PKILib/lib/linux/openssl/include
+        ../../PKILib
         "/usr/local/include" )
 
     if( CMAKE_BUILD_TYPE STREQUAL "Debug" )
