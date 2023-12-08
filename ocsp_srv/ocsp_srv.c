@@ -630,8 +630,7 @@ void printUsage()
 }
 
 
-#ifndef WIN32
-#ifdef USE_PRC
+#if !defined WIN32 && defined USE_PRC
 static int MainProcessInit()
 {
     return 0;
@@ -652,7 +651,7 @@ static int ChildProcessTerm()
     return 0;
 }
 #endif
-#endif
+
 
 int main( int argc, char *argv[] )
 {
