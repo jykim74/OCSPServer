@@ -22,7 +22,6 @@ int     g_nMsgDump = 0;
 
 int     g_nPort = JS_OCSP_PORT;
 int     g_nSSLPort = JS_OCSP_SSL_PORT;
-int     g_nLogLevel = JS_LOG_LEVEL_ERROR;
 
 const char* g_dbPath = NULL;
 static char g_sConfigPath[1024];
@@ -443,7 +442,7 @@ int initServer( sqlite3 *db )
     const char *value = NULL;
 
     value = JS_CFG_getValue( g_pEnvList, "LOG_LEVEL" );
-    if( value ) g_nLogLevel = atoi( value );
+    if( value ) JS_LOG_setLevel( atoi( value ) );
 
     value = JS_CFG_getValue( g_pEnvList, "LOG_PATH" );
     if( value )
