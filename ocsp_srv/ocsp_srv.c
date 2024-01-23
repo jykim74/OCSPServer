@@ -75,7 +75,7 @@ int OCSP_Service( JThreadInfo *pThInfo )
 
     LV( "RecvBin Len: %d", binReq.nLen );
 
-    if( pMethInfo ) printf( "MethInfo : %s\n", pMethInfo );
+    if( pMethInfo ) LI( "MethInfo : %s", pMethInfo );
     JS_HTTP_getMethodPath( pMethInfo, &nType, &pPath, &pParamList );
 
     if( strcasecmp( pPath, "PING") == 0 )

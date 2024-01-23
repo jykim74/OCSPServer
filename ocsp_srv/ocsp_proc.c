@@ -85,8 +85,7 @@ int getCertStatus( sqlite3 *db, JCertIDInfo *pIDInfo, JCertStatusInfo *pStatusIn
 
     if( ret == 1 )
     {
-        fprintf( stderr, "Cert is revoked(Num:%d)\n", sCert.nNum );
-        JS_LOG_write( JS_LOG_LEVEL_INFO, "Cert is revoked(Num:%d)", sCert.nNum );
+        LE( "Cert is revoked(Num:%d)", sCert.nNum );
         nStatus = JS_OCSP_STATUS_REVOKED;
         nReason = sRevoked.nReason;
         nRevokedTime = sRevoked.nRevokedDate;
