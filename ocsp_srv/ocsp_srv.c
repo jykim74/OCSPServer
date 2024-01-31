@@ -77,9 +77,11 @@ int OCSP_Service( JThreadInfo *pThInfo )
 
     if( pMethInfo ) LI( "MethInfo : %s", pMethInfo );
     JS_HTTP_getMethodPath( pMethInfo, &nType, &pPath, &pParamList );
+    LV( "Path: %s", pPath );
 
-    if( strcasecmp( pPath, "PING") == 0 )
+    if( strcasecmp( pPath, "/PING") == 0 )
     {
+        LV( "PING Check" );
         pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
     }
     else if( strcasecmp( pPath, "/OCSP") == 0 )
@@ -92,6 +94,12 @@ int OCSP_Service( JThreadInfo *pThInfo )
         }
 
         pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
+    }
+    else
+    {
+        ret = -1;
+        LE( "Invalid URL: %s", pPath );
+        goto end;
     }
 
     JS_UTIL_createNameValList2("accept", "application/ocsp-response", &pRspHeaderList);
@@ -162,8 +170,9 @@ int OCSP_SSL_Service( JThreadInfo *pThInfo )
 
     if( pMethInfo ) LI( "MethInfo : %s", pMethInfo );
     JS_HTTP_getMethodPath( pMethInfo, &nType, &pPath, &pParamList );
+    LV( "Path: %s", pPath );
 
-    if( strcasecmp( pPath, "PING") == 0 )
+    if( strcasecmp( pPath, "/PING") == 0 )
     {
         pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
     }
@@ -177,6 +186,12 @@ int OCSP_SSL_Service( JThreadInfo *pThInfo )
         }
 
         pMethod = JS_HTTP_getStatusMsg( JS_HTTP_STATUS_OK );
+    }
+    else
+    {
+        ret = -1;
+        LE( "Invalid URL: %s", pPath );
+        goto end;
     }
 
     JS_UTIL_createNameValList2("accept", "application/ocsp-response", &pRspHeaderList);
