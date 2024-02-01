@@ -11,6 +11,7 @@
 #include "js_log.h"
 #include "js_pki.h"
 #include "js_pkcs11.h"
+#include "js_error.h"
 
 BIN     g_binOcspCert = {0,0};
 BIN     g_binOcspPri = {0,0};

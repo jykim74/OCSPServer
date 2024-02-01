@@ -10,6 +10,7 @@
 #include "js_log.h"
 #include "sqlite3.h"
 #include "js_pkcs11.h"
+#include "js_error.h"
 
 #include "js_db.h"
 
