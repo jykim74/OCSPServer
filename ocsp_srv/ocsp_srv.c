@@ -430,13 +430,24 @@ int readPriKey()
     else
     {
         BIN binEnc = {0,0};
-        const char *pPasswd = NULL;
+        char sPasswd[1024];
 
-        pPasswd = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_PASSWD" );
-        if( pPasswd == NULL )
+        memset( sPasswd, 0x00, sizeof(sPasswd));
+
+        value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_PASSWD" );
+        if( value == NULL )
         {
             LE( "You have to set 'OCSP_SRV_PRIKEY_PASSWD'" );
             return -2;
+        }
+
+        if( strncasecmp( value, "{ENC}", 5 ) == 0 )
+        {
+            JS_GEN_decPassword( value, sPasswd );
+        }
+        else
+        {
+            memcpy( sPasswd, value, strlen(value));
         }
 
         value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_PATH" );
@@ -453,7 +464,7 @@ int readPriKey()
             return -2;
         }
 
-        ret = JS_PKI_decryptPrivateKey( pPasswd, &binEnc, NULL, &g_binOcspPri );
+        ret = JS_PKI_decryptPrivateKey( sPasswd, &binEnc, NULL, &g_binOcspPri );
         if( ret != 0 )
         {
             LE( "invalid password (%d)", ret );
