@@ -268,7 +268,11 @@ int loginHSM()
 
     if( strncasecmp( value, "{ENC}", 5 ) == 0 )
     {
-        JS_GEN_decPassword( &value[5], &pDecPass );
+        BIN binEnc = {0,0};
+        binEnc.pVal = &value[5];
+        binEnc.nLen = strlen( value ) - 5;
+
+        JS_GEN_decPassword( &binEnc, &pDecPass );
         pPIN = pDecPass;
     }
     else
@@ -390,7 +394,11 @@ int readPriKeyDB( sqlite3 *db )
 
         if( strncasecmp( value, "{ENC}", 5 ) == 0 )
         {
-            JS_GEN_decPassword( &value[5], &pDecPass );
+            BIN binEnc = {0,0};
+            binEnc.pVal = &value[5];
+            binEnc.nLen = strlen( value ) - 5;
+
+            JS_GEN_decPassword( &binEnc, &pDecPass );
             pPasswd = pDecPass;
         }
         else
