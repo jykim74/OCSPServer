@@ -230,6 +230,7 @@ int loginHSM()
 
     CK_ULONG uSlotCnt = 0;
     CK_SLOT_ID  sSlotList[10];
+    char        sPIN[1024];
 
     int nUserType = 0;
 
@@ -239,10 +240,9 @@ int loginHSM()
 
     int nSlotID = -1;
     const char *pLibPath = NULL;
-    const char *pPIN = NULL;
-    int nPINLen = 0;
     const char *value = NULL;
-    char *pDecPass = NULL;
+
+    memset( sPIN, 0x00, sizeof(sPIN));
 
     pLibPath = JS_CFG_getValue( g_pEnvList, "OCSP_HSM_LIB_PATH" );
     if( pLibPath == NULL )
@@ -269,25 +269,17 @@ int loginHSM()
 
     if( strncasecmp( value, "{ENC}", 5 ) == 0 )
     {
-        BIN binEnc = {0,0};
-        binEnc.pVal = &value[5];
-        binEnc.nLen = strlen( value ) - 5;
-
-        JS_GEN_decPassword( &binEnc, &pDecPass );
-        pPIN = pDecPass;
+        JS_GEN_decPassword( value, sPIN );
     }
     else
     {
-        pPIN = value;
+        memcpy( sPIN, value, strlen(value) );
     }
-
-    nPINLen = atoi( pPIN );
 
     value = JS_CFG_getValue( g_pEnvList, "OCSP_HSM_KEY_ID" );
     if( value == NULL )
     {
         LE( "You have to set 'OCSP_HSM_KEY_ID'" );
-        if( pDecPass ) JS_free( pDecPass );
         return -1;
     }
 
@@ -297,7 +289,6 @@ int loginHSM()
     if( ret != 0 )
     {
         LE( "fail to load library(%s:%d)", value, ret );
-        if( pDecPass ) JS_free( pDecPass );
         return -2;
     }
 
@@ -305,7 +296,6 @@ int loginHSM()
     if( ret != CKR_OK )
     {
         LE( "fail to run initialize(%d)", ret );
-        if( pDecPass ) JS_free( pDecPass );
         return -2;
     }
 
@@ -313,7 +303,6 @@ int loginHSM()
     if( ret != CKR_OK )
     {
         LE( "fail to run getSlotList fail(%d)", ret );
-        if( pDecPass ) JS_free( pDecPass );
         return -2;
     }
 
@@ -327,19 +316,16 @@ int loginHSM()
     if( ret != CKR_OK )
     {
         LE( "fail to run opensession(%s:%x)", JS_PKCS11_GetErrorMsg(ret), ret );
-        if( pDecPass ) JS_free( pDecPass );
         return -1;
     }
 
-    ret = JS_PKCS11_Login( g_pP11CTX, nUserType, pPIN, nPINLen );
+    ret = JS_PKCS11_Login( g_pP11CTX, nUserType, sPIN, strlen(sPIN) );
     if( ret != 0 )
     {
         LE( "fail to run login hsm(%d)", ret );
-        if( pDecPass ) JS_free( pDecPass );
         return -2;
     }
 
-    if( pDecPass ) JS_free( pDecPass );
     LI( "HSM login OK" );
 
     return 0;
@@ -382,9 +368,9 @@ int readPriKeyDB( sqlite3 *db )
     }
     else
     {
+        char sPasswd[1024];
         BIN binEnc = {0,0};
-        const char *pPasswd = NULL;
-        char *pDecPass = NULL;
+        memset( sPasswd, 0x00, sizeof(sPasswd));
 
         value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_PASSWD" );
         if( value == NULL )
@@ -395,30 +381,23 @@ int readPriKeyDB( sqlite3 *db )
 
         if( strncasecmp( value, "{ENC}", 5 ) == 0 )
         {
-            BIN binEnc = {0,0};
-            binEnc.pVal = &value[5];
-            binEnc.nLen = strlen( value ) - 5;
-
-            JS_GEN_decPassword( &binEnc, &pDecPass );
-            pPasswd = pDecPass;
+            JS_GEN_decPassword( value, sPasswd );
         }
         else
         {
-            pPasswd = value;
+            memcpy( sPasswd, value, strlen(value));
         }
 
         JS_BIN_decodeHex( sKeyPair.pPrivate, &binEnc );
 
-        ret = JS_PKI_decryptPrivateKey( pPasswd, &binEnc, NULL, &g_binOcspPri );
+        ret = JS_PKI_decryptPrivateKey( sPasswd, &binEnc, NULL, &g_binOcspPri );
         if( ret != 0 )
         {
             LE( "invalid password (%d)", ret );
-            if( pDecPass ) JS_free( pDecPass );
             return -3;
         }
 
         JS_BIN_reset( &binEnc );
-        if( pDecPass ) JS_free( pDecPass );
     }
 
     JS_DB_resetKeyPair( &sKeyPair );
