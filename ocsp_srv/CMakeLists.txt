@@ -93,4 +93,4 @@ ELSE()
 ENDIF()
 
 
-target_compile_definitions( ${PROJECT_NAME} PRIVATE USE_OCSP )
+target_compile_definitions( ${PROJECT_NAME} PRIVATE OCSP_MOD )
