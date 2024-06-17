@@ -31,12 +31,14 @@ IF (WIN32)
         target_link_directories( ${PROJECT_NAME} PRIVATE
         ../../lib/win64/debug/openssl3/lib64
         ../../build-PKILib-Desktop_Qt_5_13_2_MinGW_64_bit-Debug
-        "C:/msys64/mingw64/lib" )
+        ../../lib/win64 )
+#        "C:/msys64/mingw64/lib" )
     elseif( CMAKE_BUILD_TYPE STREQUAL "Release" )
         target_link_directories( ${PROJECT_NAME} PRIVATE
         ../../lib/win64/openssl3/lib64
         ../../build-PKILib-Desktop_Qt_5_13_2_MinGW_64_bit-Release
-        "C:/msys64/mingw64/lib" )
+        ../../lib/win64 )
+#        "C:/msys64/mingw64/lib" )
     endif()
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
