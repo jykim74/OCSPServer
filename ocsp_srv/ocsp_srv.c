@@ -761,7 +761,7 @@ int main( int argc, char *argv[] )
         ret = JS_CFG_readConfig( g_sConfigPath, &g_pEnvList );
         if( ret != 0 )
         {
-            fprintf( "fail to open config file(%s)\n", g_sConfigPath );
+            fprintf( stderr, "fail to open config file(%s)\n", g_sConfigPath );
             exit(0);
         }
     }
