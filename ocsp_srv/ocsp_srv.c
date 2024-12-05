@@ -67,12 +67,16 @@ int OCSP_Service( JThreadInfo *pThInfo )
         goto end;
     }
 
+
+
     ret = JS_HTTP_recvBin( pThInfo->nSockFd, &pMethInfo, &pHeaderList, &binReq );
     if( ret != 0 )
     {
         LE( "fail to receive message(%d)", ret );
         goto end;
     }
+
+
 
     LV( "RecvBin Len: %d", binReq.nLen );
 
@@ -102,6 +106,8 @@ int OCSP_Service( JThreadInfo *pThInfo )
         LE( "Invalid URL: %s", pPath );
         goto end;
     }
+
+
 
     JS_UTIL_createNameValList2("accept", "application/ocsp-response", &pRspHeaderList);
     JS_UTIL_appendNameValList2( pRspHeaderList, "content-type", "application/ocsp-response");

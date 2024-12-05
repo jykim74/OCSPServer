@@ -74,6 +74,7 @@ int getCertStatus( sqlite3 *db, JCertIDInfo *pIDInfo, JCertStatusInfo *pStatusIn
         goto end;
     }
 
+
     ret = JS_DB_getCertBySerial( db, pIDInfo->pSerial, &sCert );
     if( ret != 1 )
     {
@@ -161,6 +162,8 @@ int procVerify( sqlite3 *db, const BIN *pReq, BIN *pRsp )
 
         JS_BIN_decodeHex( sDBSigner.pCert, &binSigner );
     }
+
+
 
     if( g_nMsgDump ) msgDump( JS_OCSP_MSG_REQ, pReq );
 

@@ -17,8 +17,6 @@ add_executable(ocsp_srv
         ../ocsp_srv.cfg
 	)
 
-
-
 IF (WIN32)
     message( STATUS "Windows Env" )
 
