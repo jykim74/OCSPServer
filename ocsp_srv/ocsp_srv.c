@@ -419,6 +419,8 @@ int readPriKey()
     value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_ENC" );
     if( value && strcasecmp( value, "NO" ) == 0 )
     {
+        int nKeyType = -1;
+
         value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_PATH" );
         if( value == NULL )
         {
@@ -430,6 +432,13 @@ int readPriKey()
         if( ret <= 0 )
         {
             LE( "fail to read private key file(%s:%d)", value, ret );
+            return -1;
+        }
+
+        nKeyType = JS_PKI_getPriKeyType( &g_binOcspPri );
+        if( nKeyType < 0 )
+        {
+            LE( "invalid private" );
             return -1;
         }
     }
@@ -459,8 +468,12 @@ int readPriKey()
         value = JS_CFG_getValue( g_pEnvList, "OCSP_SRV_PRIKEY_PATH" );
         if( value == NULL )
         {
-            LE( "You have to set 'OCSP_SRV_PRIKEY_PATH'" );
-            return -2;
+            ret = JS_GEN_getPassword( sPasswd );
+            if( ret != 0 )
+            {
+                LE( "You have to set 'OCSP_SRV_PRIKEY_PATH'" );
+                return -2;
+            }
         }
 
         ret = JS_BIN_fileReadBER( value, &binEnc );
