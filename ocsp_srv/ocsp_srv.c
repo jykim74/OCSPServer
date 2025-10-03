@@ -514,11 +514,6 @@ int initServer( sqlite3 *db )
     else
         ret = JS_LOG_open( "log", "OCSP", JS_LOG_TYPE_DAILY );
 
-    if( ret != 0 )
-    {
-        LE( "fail to open logfile:%d", ret );
-        return ret;
-    }
 
     if( g_nConfigDB == 1 )
     {
